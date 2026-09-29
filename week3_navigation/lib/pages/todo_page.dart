@@ -1,99 +1,57 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class Todo {
-  Todo(this.title, {this.done = false});
-  final String title;
-  final bool done;
-
-  Todo copyWith({String? title, bool? done}) =>
-      Todo(title ?? this.title, done: done ?? this.done);
-}
-
-class TodoListNotifier extends Notifier<List<Todo>> {
+class ProductsNotifier extends AsyncNotifier<List<String>> {
   @override
-  List<Todo> build() => const [];
-
-  void add(String title) => state = [...state, Todo(title)];
-
-  void toggle(int index) {
-    final todos = [...state];
-    todos[index] = todos[index].copyWith(done: !todos[index].done);
-    state = todos;
+  Future<List<String>> build() async {
+    await Future.delayed(const Duration(seconds: 2)); 
+    return ['Keyboard', 'Mouse', 'Monitor']; 
   }
 
-  void remove(int index) => state = [...state]..removeAt(index);
+  Future<void> refresh() async {
+    state = const AsyncLoading();
+    state = await AsyncValue.guard(() => _fetch());
+  }
+
+  Future<List<String>> _fetch() async {
+    await Future.delayed(const Duration(seconds: 1));
+    return ['Keyboard', 'Mouse', 'Monitor', 'Headset'];
+  }
 }
 
-final todoListProvider =
-    NotifierProvider<TodoListNotifier, List<Todo>>(TodoListNotifier.new);
+final productsProvider =
+    AsyncNotifierProvider<ProductsNotifier, List<String>>(
+        ProductsNotifier.new);
 
-class TodoPage extends ConsumerWidget {
-  const TodoPage({super.key});
+class ProductPage extends ConsumerWidget {
+  const ProductPage({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final todos = ref.watch(todoListProvider);
+    final productsAsync = ref.watch(productsProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('ToDo Riverpod')),
-      body: todos.isEmpty
-          ? const Center(child: Text('Belum ada tugas'))
-          : ListView.builder(
-              itemCount: todos.length,
-              itemBuilder: (context, index) => ListTile(
-                leading: Checkbox(
-                  value: todos[index].done,
-                  onChanged: (_) =>
-                      ref.read(todoListProvider.notifier).toggle(index),
-                ),
-                title: Text(
-                  todos[index].title,
-                  style: TextStyle(
-                    decoration: todos[index].done
-                        ? TextDecoration.lineThrough
-                        : null,
-                  ),
-                ),
-                trailing: IconButton(
-                  icon: const Icon(Icons.delete),
-                  onPressed: () =>
-                      ref.read(todoListProvider.notifier).remove(index),
-                ),
+      appBar: AppBar(title: const Text('Produk')),
+      body: productsAsync.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (err, stack) => Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text('Gagal memuat: $err'),
+              FilledButton(
+                onPressed: () => ref.invalidate(productsProvider),
+                child: const Text('Coba lagi'),
               ),
-            ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => _showAddDialog(context, ref),
-        child: const Icon(Icons.add),
+            ],
+          ),
+        ),
+        data: (products) => ListView.builder(
+          itemCount: products.length,
+          itemBuilder: (context, index) =>
+              ListTile(title: Text(products[index])),
+        ),
       ),
     );
   }
-}
-
-void _showAddDialog(BuildContext context, WidgetRef ref) {
-  final controller = TextEditingController();
-  showDialog(
-    context: context,
-    builder: (context) => AlertDialog(
-      title: const Text('Tugas baru'),
-      content: TextField(controller: controller, autofocus: true),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text('Batal'),
-        ),
-        FilledButton(
-          onPressed: () {
-            if (controller.text.trim().isNotEmpty) {
-              ref
-                  .read(todoListProvider.notifier)
-                  .add(controller.text.trim());
-            }
-            Navigator.pop(context);
-          },
-          child: const Text('Tambah'),
-        ),
-      ],
-    ),
-  );
 }
