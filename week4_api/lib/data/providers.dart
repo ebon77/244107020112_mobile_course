@@ -3,7 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'dart:async';
 import 'api_client.dart';
 import 'models/post.dart';
+import 'paged_posts.dart';
 import 'repositories/post_repository.dart';
+
+export 'network_errors.dart';
 
 final dioProvider = Provider<Dio>((ref) => createDio());
 
@@ -33,25 +36,36 @@ final postListProvider =
   return PostListNotifier();
 });
 
-String friendlyErrorMessage(Object error) {
-  if (error is DioException) {
-    switch (error.type) {
-      case DioExceptionType.connectionTimeout:
-      case DioExceptionType.sendTimeout:
-      case DioExceptionType.receiveTimeout:
-        return 'Koneksi lambat atau timeout. Periksa internet Anda lalu coba lagi.';
-      case DioExceptionType.connectionError:
-        return 'Tidak dapat terhubung ke server. Periksa internet Anda.';
-      case DioExceptionType.badResponse:
-        final code = error.response?.statusCode;
-        if (code == 404) return 'Data tidak ditemukan (404).';
-        if (code == 401 || code == 403) {
-          return 'Akses ditolak ($code). Periksa kredensial Anda.';
-        }
-        return 'Server bermasalah ($code). Coba lagi nanti.';
-      default:
-        return 'Terjadi kesalahan jaringan. Coba lagi.';
+final postDetailProvider = FutureProvider.family<Post, int>((ref, id) async {
+  // 1. Cek dari state postListProvider di memori
+  final listState = ref.read(postListProvider);
+  if (listState.hasValue && listState.value != null) {
+    final matches = listState.value!.where((p) => p.id == id);
+    if (matches.isNotEmpty) {
+      return matches.first;
     }
   }
-  return 'Terjadi kesalahan tak terduga: $error';
+
+  // 2. Cek dari state pagedPostsProvider di memori
+  final pagedState = ref.read(pagedPostsProvider);
+  final pagedMatches = pagedState.items.where((p) => p.id == id);
+  if (pagedMatches.isNotEmpty) {
+    return pagedMatches.first;
+  }
+
+  // 3. Jika tidak ada di memori, panggil via PostRepository
+  final repository = ref.read(postRepositoryProvider);
+  return repository.fetchPost(id);
+});
+
+Future<List<Post>> readPostsOnce(ProviderContainer container) async {
+  container.read(postListProvider);
+  await Future.delayed(Duration.zero);
+  return container.read(postListProvider).requireValue;
+}
+
+Future<Object?> readPostsErrorOnce(ProviderContainer container) async {
+  container.read(postListProvider);
+  await Future.delayed(Duration.zero);
+  return container.read(postListProvider).error;
 }
