@@ -3,10 +3,10 @@ import 'package:dio/dio.dart';
 Dio createDio() {
   final dio = Dio(
     BaseOptions(
-      baseUrl: baseUrl: '[https://jsonplaceholder.typicode.com_salah](https://jsonplaceholder.typicode.com_salah)',
+      baseUrl: 'https://jsonplaceholder.typicode.com',
       connectTimeout: const Duration(seconds: 10),
       receiveTimeout: const Duration(seconds: 10),
-      headers: {'Accept': 'application/json'},read
+      headers: {'Accept': 'application/json'},
     ),
   );
   
