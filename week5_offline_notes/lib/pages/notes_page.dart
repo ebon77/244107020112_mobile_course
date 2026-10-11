@@ -1,48 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../data/local/note.dart';
-import '../data/repositories/note_repositories.dart';
+import '../data/repositories/note_repository.dart';
 import '../data/sync.dart';
 import '../widgets/note_tile.dart';
-
-class NotesNotifier extends AsyncNotifier<List<Note>> {
-  @override
-  Future<List<Note>> build() async {
-    final repo = ref.watch(noteRepositoryProvider);
-    return repo.fetchNotes();
-  }
-
-  Future<void> refresh() async {
-    state = const AsyncLoading();
-    state = await AsyncValue.guard(() async {
-      final repo = ref.read(noteRepositoryProvider);
-      return repo.fetchNotes();
-    });
-  }
-
-  Future<void> add(String title, String body) async {
-    final repo = ref.read(noteRepositoryProvider);
-    await repo.addNote(title: title, body: body);
-    ref.invalidateSelf();
-  }
-
-  Future<void> delete(int id) async {
-    final repo = ref.read(noteRepositoryProvider);
-    await repo.deleteNote(id);
-    ref.invalidateSelf();
-  }
-
-  Future<int> sync() async {
-    final repo = ref.read(noteRepositoryProvider);
-    final count = await syncNotes(repo);
-    ref.invalidateSelf();
-    return count;
-  }
-}
-
-final notesProvider =
-    AsyncNotifierProvider<NotesNotifier, List<Note>>(NotesNotifier.new);
 
 class NotesPage extends ConsumerWidget {
   const NotesPage({super.key});
@@ -87,7 +48,10 @@ class NotesPage extends ConsumerWidget {
               final title = titleController.text.trim();
               final body = bodyController.text.trim();
               if (title.isNotEmpty) {
-                await ref.read(notesProvider.notifier).add(title, body);
+                await ref
+                    .read(noteRepositoryProvider)
+                    .addNote(title: title, body: body);
+                ref.invalidate(notesProvider);
                 if (ctx.mounted) {
                   Navigator.pop(ctx);
                 }
@@ -112,7 +76,9 @@ class NotesPage extends ConsumerWidget {
             icon: const Icon(Icons.sync),
             tooltip: 'Sinkronisasi Catatan',
             onPressed: () async {
-              final count = await ref.read(notesProvider.notifier).sync();
+              final repo = ref.read(noteRepositoryProvider);
+              final count = await syncNotes(repo);
+              ref.invalidate(notesProvider);
               if (context.mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
@@ -142,7 +108,7 @@ class NotesPage extends ConsumerWidget {
               Text('Terjadi kesalahan: $err'),
               const SizedBox(height: 12),
               ElevatedButton(
-                onPressed: () => ref.read(notesProvider.notifier).refresh(),
+                onPressed: () => ref.refresh(notesProvider),
                 child: const Text('Muat Ulang'),
               ),
             ],
@@ -160,7 +126,7 @@ class NotesPage extends ConsumerWidget {
           }
 
           return RefreshIndicator(
-            onRefresh: () => ref.read(notesProvider.notifier).refresh(),
+            onRefresh: () async => ref.refresh(notesProvider.future),
             child: ListView.builder(
               padding: const EdgeInsets.symmetric(vertical: 8),
               itemCount: notes.length,
@@ -170,9 +136,14 @@ class NotesPage extends ConsumerWidget {
                   note: note,
                   onTap: () async {
                     await context.push('/note/${note.id}');
-                    ref.read(notesProvider.notifier).refresh();
+                    ref.invalidate(notesProvider);
                   },
-                  onDelete: () => ref.read(notesProvider.notifier).delete(note.id!),
+                  onDelete: () async {
+                    await ref
+                        .read(noteRepositoryProvider)
+                        .deleteNote(note.id!);
+                    ref.invalidate(notesProvider);
+                  },
                 );
               },
             ),
