@@ -3,7 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/prefs.dart';
 
 final prefsRepositoryProvider = Provider((ref) => PrefsRepository());
-final darkModeProvider = AsyncNotifierProvider<DarkModeNotifier, bool>(DarkModeNotifier.new);
+final darkModeProvider =
+    AsyncNotifierProvider<DarkModeNotifier, bool>(DarkModeNotifier.new);
 
 class DarkModeNotifier extends AsyncNotifier<bool> {
   @override
@@ -16,5 +17,32 @@ class DarkModeNotifier extends AsyncNotifier<bool> {
       await ref.read(prefsRepositoryProvider).setDarkMode(next);
       return next;
     });
+  }
+}
+
+class SettingsPage extends ConsumerWidget {
+  const SettingsPage({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isDarkMode = ref.watch(darkModeProvider).value ?? false;
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Pengaturan'),
+      ),
+      body: ListView(
+        children: [
+          SwitchListTile(
+            title: const Text('Mode Gelap (Dark Mode)'),
+            subtitle: const Text('Simpan preferensi tema dengan SharedPreferences'),
+            value: isDarkMode,
+            onChanged: (_) {
+              ref.read(darkModeProvider.notifier).toggle();
+            },
+          ),
+        ],
+      ),
+    );
   }
 }
