@@ -24,7 +24,7 @@ Dio buildApiClient(TokenStore store, AuthRepository auth) {
           );
           return handler.resolve(retry);
         } catch (_) {
-          await store.clear(); // refresh ikut mati -> paksa login ulang
+          await store.clear();
         }
       }
       handler.next(e);

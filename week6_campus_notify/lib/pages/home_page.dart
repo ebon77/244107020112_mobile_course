@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:dio/dio.dart';
 import '../messaging/push_service.dart';
 import '../providers/auth_provider.dart';
+import '../routes.dart';
 
 class HomePage extends StatefulWidget {
   final String title;
@@ -27,25 +28,20 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> _setupFcm() async {
-    // 1. Minta izin notifikasi
     await requestNotificationPermission();
 
-    // 2. Inisialisasi local notification
     await initLocalNotifications((route) {
       if (mounted) context.go(route);
     });
 
-    // 3. Praktikum 3: Handler Foreground & Background Click
     listenForeground((route) {
       if (mounted) context.go(route);
     });
 
-    // 4. Praktikum 3: Handler Terminated (dibuka dari status mati)
     await handleTerminated((route) {
       if (mounted) context.go(route);
     });
 
-    // 5. Inisialisasi token & langganan topik default
     await initFcmToken(
       onToken: (token) async {
         if (!mounted) return;
@@ -61,10 +57,7 @@ class _HomePageState extends State<HomePage> {
             'fcm_token': token,
             'platform': 'android',
           });
-          debugPrint('Berhasil kirim token penuh ke backend: $token');
-        } catch (e) {
-          debugPrint('Simulasi kirim token: $e');
-        }
+        } catch (_) {}
       },
     );
   }
@@ -110,7 +103,6 @@ class _HomePageState extends State<HomePage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Card Token FCM
             Card(
               elevation: 2,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
@@ -152,8 +144,6 @@ class _HomePageState extends State<HomePage> {
               ),
             ),
             const SizedBox(height: 16),
-
-            // Card Topik Messaging
             Card(
               elevation: 2,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
@@ -181,8 +171,6 @@ class _HomePageState extends State<HomePage> {
               ),
             ),
             const SizedBox(height: 16),
-
-            // Card Simulasi Navigasi Deep-Link
             Card(
               elevation: 2,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
@@ -202,7 +190,7 @@ class _HomePageState extends State<HomePage> {
                     ),
                     const SizedBox(height: 12),
                     OutlinedButton.icon(
-                      onPressed: () => context.go('/pengumuman/3'),
+                      onPressed: () => context.go(AppRoutes.announcementDetail('3')),
                       icon: const Icon(Icons.open_in_new),
                       label: const Text('Buka Halaman /pengumuman/3'),
                     ),

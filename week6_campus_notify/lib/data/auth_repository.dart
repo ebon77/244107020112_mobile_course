@@ -5,16 +5,12 @@ class AuthSession {
 }
 
 class AuthRepository {
-  // GANTI titik ini dengan FirebaseAuth.instance.signInWithEmailAndPassword
-  // atau GoogleSignIn saat backend Firebase sudah siap.
   Future<AuthSession> login(
       {required String email, required String password}) async {
     await Future.delayed(const Duration(milliseconds: 500));
     if (!email.contains('@') || password.length < 6) {
       throw Exception('Email atau kata sandi tidak valid');
     }
-    // Simulasi JWT: header.payload.signature (jangan parse manual di produksi,
-    // gunakan verifikasi server).
     return AuthSession(
       access: 'mock-access-for-$email',
       refresh: 'mock-refresh-for-$email',

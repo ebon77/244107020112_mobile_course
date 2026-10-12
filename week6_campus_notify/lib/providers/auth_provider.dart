@@ -2,11 +2,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/token_store.dart';
 import '../data/auth_repository.dart';
 
-// Provider Pendukung
 final tokenStoreProvider = Provider((ref) => TokenStore());
 final authRepositoryProvider = Provider((ref) => AuthRepository());
 
-// Provider Utama
 final authStateProvider =
     AsyncNotifierProvider<AuthNotifier, bool>(AuthNotifier.new);
 
