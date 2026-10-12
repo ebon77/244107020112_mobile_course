@@ -6,6 +6,7 @@ import '../models/note_model.dart';
 
 class NoteRepositoryImpl implements NoteRepository {
   NoteRepositoryImpl({required Future<Database> Function() openDb})
+      // ignore: prefer_initializing_formals
       : _openDb = openDb;
 
   final Future<Database> Function() _openDb;
@@ -14,10 +15,8 @@ class NoteRepositoryImpl implements NoteRepository {
   Future<({List<Note> notes, Failure? failure})> fetchNotes() async {
     try {
       final db = await _openDb();
-      final rows = 
-          await db.query('notes', orderBy: 'updated_at DESC');
-      final notes = 
-          rows.map((r) => NoteModel.fromMap(r).toEntity()).toList();
+      final rows = await db.query('notes', orderBy: 'updated_at DESC');
+      final notes = rows.map((r) => NoteModel.fromMap(r).toEntity()).toList();
       return (notes: notes, failure: null);
     } catch (e) {
       return (
@@ -38,27 +37,35 @@ class NoteRepositoryImpl implements NoteRepository {
       final id = await db.insert(
         'notes',
         NoteModel(
-          title: title,
-          body: body,
-          updatedAt: now,
-          dirty: true,
+          title: title, body: body, updatedAt: now, dirty: true
         ).toMap(),
       );
       return (
-        note: Note(
-          id: id,
-          title: title,
-          body: body,
-          updatedAt: now,
-          dirty: true,
-        ),
+        note: Note(id: id, title: title, body: body, updatedAt: now, dirty: true),
         failure: null,
       );
     } catch (e) {
-      return (
-        note: null,
-        failure: LocalFailure('Gagal menyimpan catatan: $e'),
-      );
+      return (note: null, failure: LocalFailure('Gagal menyimpan catatan: $e'));
     }
   }
 }
+
+Future<Database> openNotesDb() async {
+  final dir = await getDatabasesPath();
+  return openDatabase(
+    '$dir/offline_notes.db',
+    version: 1,
+    onCreate: (db, version) async {
+      await db.execute('''
+        CREATE TABLE notes(
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          title TEXT NOT NULL,
+          body TEXT NOT NULL DEFAULT '',
+          updated_at TEXT NOT NULL,
+          dirty INTEGER NOT NULL DEFAULT 0
+        )
+      ''');
+    },
+  );
+}
+
