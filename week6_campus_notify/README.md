@@ -38,3 +38,34 @@ Implementasi penanganan Push Notification Firebase Cloud Messaging (FCM) pada ti
 ## 4. Topic Messaging
 - Berlangganan topik kampus: `FirebaseMessaging.instance.subscribeToTopic('pengumuman-kampus')`
 - Berhenti langganan topik: `FirebaseMessaging.instance.unsubscribeFromTopic('pengumuman-kampus')`
+
+---
+
+## 5. Audit Arsitektur (Praktikum 1 - Clean Architecture)
+
+### Pemetaan File ke Layer
+
+| File | Layer saat ini | Masalah |
+| :--- | :--- | :--- |
+| `lib/pages/home_page.dart` | Presentation | Memanggil API (Dio POST `/devices`) langsung di UI, instansiasi Dio manual (`BaseOptions`), serta memanggil push service langsung di widget state. |
+| `lib/pages/announcement_page.dart` | Presentation | Konten pengumuman masih hardcoded di UI, belum menggunakan Entity domain atau State Management pengumuman. |
+| `lib/pages/login_page.dart` | Presentation | File masih kosong (stub) belum terimplementasi. |
+| `lib/data/api_client.dart` | Data | Berisi konfigurasi Dio dan interceptor. Memiliki dependensi konkret ke `TokenStore` dan `AuthRepository` (bukan interface/abstraksi). |
+| `lib/data/api_errors.dart` | Data | Error handling terikat kuat dengan `DioException`, belum diabstraksikan ke Failure domain (murni Dart). |
+| `lib/data/auth_repository.dart` | Data (+ kontrak tercampur) | Interface dan implementasi masih digabung dalam satu kelas konkret; Model `AuthSession` tercampur di data layer tanpa domain entity. |
+| `lib/data/token_store.dart` | Data | Mengakses `FlutterSecureStorage` langsung tanpa kontrak/interface DataSource. |
+| `lib/providers/auth_provider.dart` | Presentation (State) | DI bocor: Melakukan instansiasi langsung kelas konkret `AuthRepository()` dan `TokenStore()` tanpa abstraksi interface. |
+| `lib/messaging/push_service.dart` | Infrastructure / Data | God class (SRP violation): Mencampur FCM, local notifications, routing GoRouter, penyimpanan secure storage, dan HTTP network call Dio di satu tempat. |
+| `lib/routes.dart` | Core / Routing | Berisi konfigurasi rute dan helper parsing rute notifikasi. |
+| `lib/main.dart` | Bootstrap / Core | Inisialisasi awal aplikasi (Firebase, GoRouter, Riverpod ProviderScope). |
+
+### Temuan 3 Pelanggaran Klasik
+
+1. **Widget menyentuh jaringan/database langsung:**
+   - `lib/pages/home_page.dart` (baris 22 & 56): Memanggil `Dio(BaseOptions(...))` dan melakukan HTTP request `dio.post('/devices', ...)`.
+2. **Logika bisnis di UI (`DateFormat`, `jsonDecode`, `.toIso8601String`):**
+   - Tidak ditemukan pemanggilan `DateFormat`, `jsonDecode`, atau `.toIso8601String` pada `lib/pages/` (0 temuan). Namun, terdapat formatting manual string token (`token.substring(0, 14)...`) langsung di UI widget.
+3. **Dependency Injection bocor (Instansiasi manual):**
+   - `lib/pages/home_page.dart` (baris 22): Instansiasi manual `Dio(BaseOptions(...))` di UI layer.
+   - `lib/providers/auth_provider.dart` (baris 5 & 6): Instansiasi manual `TokenStore()` dan `AuthRepository()`.
+
