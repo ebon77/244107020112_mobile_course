@@ -2,30 +2,40 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:firebase_messaging/firebase_messaging.dart';
 import 'messaging/push_service.dart';
 
 import 'pages/home_page.dart'; 
+import 'pages/announcement_page.dart';
+
+// GoRouter dengan rute beranda dan detail pengumuman (Praktikum 3)
+final appRouter = GoRouter(
+  initialLocation: '/', 
+  routes: [
+    GoRoute(
+      path: '/',
+      builder: (context, state) => const HomePage(title: 'Campus Notify'),
+    ),
+    GoRoute(
+      path: '/pengumuman/:id',
+      builder: (context, state) {
+        final id = state.pathParameters['id'] ?? '0';
+        return AnnouncementPage(id: id);
+      },
+    ),
+  ],
+);
+
+final routerProvider = Provider<GoRouter>((ref) => appRouter);
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(); 
-  FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+  
+  // 1. Background handler wajib top-level (Praktikum 3)
+  registerBackgroundHandler();
   
   runApp(const ProviderScope(child: MyApp()));
 }
-
-final routerProvider = Provider<GoRouter>((ref) {
-  return GoRouter(
-    initialLocation: '/', 
-    routes: [
-      GoRoute(
-        path: '/',
-        builder: (context, state) => const HomePage(title: 'Campus Notify'),
-      ),
-    ],
-  );
-});
 
 class MyApp extends ConsumerWidget {
   const MyApp({super.key});
@@ -35,9 +45,11 @@ class MyApp extends ConsumerWidget {
     final router = ref.watch(routerProvider);
 
     return MaterialApp.router(
-      title: 'Flutter Demo',
+      title: 'Campus Notify',
+      debugShowCheckedModeBanner: false,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
+        useMaterial3: true,
       ),
       routerConfig: router, 
     );
